@@ -9,9 +9,9 @@ namespace {
 /// The high bit of each byte must still be filled.
 uint32_t radix_expand_32(uint32_t x) {
   assert(x < (1UL << 28));
-
+#ifdef __BMI2__
   return _pdep_u32(x, 127 * (UINT32_MAX / 255));
-
+#endif
   uint32_t high_half = (x & (-1UL << 14));
   uint32_t low_half = x & ((1UL << 14) - 1);
 
@@ -29,9 +29,9 @@ uint32_t radix_expand_32(uint32_t x) {
 /// The high bit of each byte must still be filled.
 uint64_t radix_expand_64(uint64_t x) {
   assert(x < (1UL << 56));
-
+#ifdef __BMI2__
   return _pdep_u64(x, 127 * (UINT64_MAX / 255));
-
+#endif
   uint64_t high_half = x & (-1ULL << 28);
 
   if (__builtin_expect(high_half == 0, 1)) {

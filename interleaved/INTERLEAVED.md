@@ -38,6 +38,13 @@ decode literals.  PDEP/PEXT for radix-128<->radix-256 bytes isn't too
 much of an issue (it's not on the critical path when decoding a series
 of opcodes), but it's more of a problem on AMD.
 
+(Reportedly Zen 3 has better PDEP/PEXT performance than previous Zen designs.
+See https://www.anandtech.com/show/16214/amd-zen-3-ryzen-deep-dive-review-5950x-5900x-5800x-and-5700x-tested/6
+Sadly ARM may not have a good solution for PDEP/PEXT. This being said, it does
+not appear that PDEP/PEXT is so important for performance? Empirically, the
+initial simdjson engine required PDEP/PEXT but the dependency was removed after
+careful benchmarks showed that it provided little to no benefit.)
+
 ```
 $ g++-8 -fno-exceptions -W -Wall -std=c++2a test.cc opcode.cc data_writer.cc write_buffer.cc base_meta_writer.cc -O2 -DNDEBUG -march=native -mtune=native && ./a.out
 1: 0
