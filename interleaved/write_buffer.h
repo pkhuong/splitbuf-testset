@@ -1,5 +1,6 @@
 #pragma once
 
+#include <assert.h>
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -45,6 +46,8 @@ class WriteBuffer {
   ///
   /// Returns `actual`.
   inline size_t commit(size_t actual) __restrict__ {
+    assert(actual <= remaining_);
+
     write_cursor_ += actual;
     remaining_ -= actual;
     return actual;
@@ -59,6 +62,9 @@ class WriteBuffer {
 
   /// Returns the linear byte buffer for the data written so far.
   inline const void *data() const { return buf_; }
+
+  /// Returns the write cursor in the current `reserve`d section.
+  inline void *write_cursor() const { return write_cursor_; }
 
   /// Returns the number of bytes written (committed) to this write
   /// buffer.
