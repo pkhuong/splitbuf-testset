@@ -66,15 +66,26 @@ void BaseMetaWriter::imm_width(Opcode op, uint8_t imm1, uint32_t literal) {
   assert(imm1 < 4);
   assert(literal < (1UL << 28));
 
-  size_t width_idx = (literal == 0) ? 0 : 32 - __builtin_clz(literal);
+  uint8_t imm2;
+  size_t width;
+
+  if ((literal - 1) < 127) {
+    imm2 = 1 << 3;
+    width = 2;
+  } else {
+    size_t width_idx = (literal == 0) ? 0 : 32 - __builtin_clz(literal);
+    imm2 = kWidthImm[width_idx].imm << 3;
+    width = kWidthImm[width_idx].width;
+  }
+
   // Expand literal to have 0s in the high bit of each byte.
   literal = radix_expand_32(literal) | (128UL * (UINT32_MAX / 255));
 
-  uint8_t encoded = (uint8_t)op | (kWidthImm[width_idx].imm << 3) | (imm1 << 5);
+  uint8_t encoded = (uint8_t)op | imm2 | (imm1 << 5);
   uint64_t merged = encoded | ((uint64_t)literal << 8);
   void *dst = buf.reserve(sizeof(merged));
   memcpy(dst, &merged, sizeof(merged));
-  buf.commit(kWidthImm[width_idx].width);
+  buf.commit(width);
   return;
 }
 
@@ -105,14 +116,25 @@ void BaseMetaWriter::imm_nonzero_width(Opcode op, uint8_t imm1,
   assert(imm1 < 4);
   assert(literal < (1UL << 56));
 
-  size_t width_idx = (literal == 0) ? 0 : 64 - __builtin_clzll(literal);
+  uint8_t imm2;
+  size_t width;
+
+  if (literal < 128) {
+    imm2 = 0;
+    width = 2;
+  } else {
+    size_t width_idx = (literal == 0) ? 0 : 64 - __builtin_clzll(literal);
+    imm2 = kWidthImm[width_idx].imm << 3;
+    width = kWidthImm[width_idx].width;
+  }
+
   literal = radix_expand_64(literal) | (128ULL * (UINT64_MAX / 255));
 
   void *dst = buf.reserve(1 + sizeof(literal));
-  uint8_t encoded = (uint8_t)op | (kWidthImm[width_idx].imm << 3) | (imm1 << 5);
+  uint8_t encoded = (uint8_t)op | imm2 | (imm1 << 5);
   memcpy(dst, &encoded, 1);
   memcpy((uint8_t *)dst + 1, &literal, sizeof(literal));
 
-  buf.commit(kWidthImm[width_idx].width);
+  buf.commit(width);
   return;
 }
