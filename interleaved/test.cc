@@ -67,6 +67,21 @@ struct Message {
   int32_t field_100{31};
 };
 
+__attribute__((noinline)) void overhead(const Message &message,
+                                        WriteBuffer *meta_buf,
+                                        WriteBuffer *data_buf) {
+  BaseMetaWriter meta(std::move(*meta_buf));
+  DataWriter data(std::move(*data_buf));
+
+  asm volatile("" ::"r"(&message) : "memory");
+
+  asm volatile("" ::"r"(&data), "r"(&meta) : "memory");
+
+  *meta_buf = std::move(meta.buf);
+  *data_buf = std::move(data.buf);
+  return;
+}
+
 __attribute__((noinline)) void test_meta(const Message &message,
                                          WriteBuffer *meta_buf,
                                          WriteBuffer *data_buf) {
@@ -232,17 +247,33 @@ int main(int, char **) {
   std::cout << "Data: " << data.written() << "; meta: " << meta.written()
             << "\n";
 
-  double begin = now();
-  for (size_t i = 0; i < niter; i++) {
-    meta.reset();
-    data.reset();
-    asm volatile("" : "+m"(message));
-    test_meta(message, &meta, &data);
+  {
+    double begin = now();
+    for (size_t i = 0; i < niter; i++) {
+      meta.reset();
+      data.reset();
+      asm volatile("" : "+m"(message));
+      overhead(message, &meta, &data);
+    }
+
+    double end = now();
+
+    std::cout << "Overhead: " << 1e9 * (end - begin) / niter << " ns/iter\n";
   }
 
-  double end = now();
+  {
+    double begin = now();
+    for (size_t i = 0; i < niter; i++) {
+      meta.reset();
+      data.reset();
+      asm volatile("" : "+m"(message));
+      test_meta(message, &meta, &data);
+    }
 
-  std::cout << 1e9 * (end - begin) / niter << " ns/iter\n";
+    double end = now();
+
+    std::cout << "Write: " << 1e9 * (end - begin) / niter << " ns/iter\n";
+  }
 
   return 0;
 }
